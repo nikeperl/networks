@@ -5,8 +5,45 @@ from selenium.webdriver.common.by import By
 from datetime import datetime
 
 
+def parse_datetime(date_str: str) -> datetime:
+    formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%Y-%m",
+        "%Y",
+        "%d.%m.%Y %H:%M:%S",
+        "%d.%m.%Y %H:%M",
+        "%d.%m.%Y",
+        "%d.%m",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y %H:%M",
+        "%d/%m/%Y",
+        "%d/%m",
+    ]
+
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(date_str, fmt)
+            return datetime(
+                dt.year if '%Y' in fmt else datetime.now().year,
+                dt.month if '%m' in fmt else 1,
+                dt.day if '%d' in fmt else 1,
+                dt.hour if hasattr(dt, 'hour') else 0,
+                dt.minute if hasattr(dt, 'minute') else 0,
+                dt.second if hasattr(dt, 'second') else 0
+            )
+        except ValueError:
+            continue
+
+    raise ValueError(f"Неверный формат даты: {date_str}")
+
+
+last_date = parse_datetime(input(
+    "Введите дату от которой собрать новости: "))  # Здесь можно поставить дату от которой до текущего момента будут сохранены новости datetime(2025, 2, 26)
+
 options = webdriver.ChromeOptions()
-#options.add_argument("--headless=new")
+# options.add_argument("--headless=new")
 options.add_argument("--blink-settings=imagesEnabled=false")
 browser = webdriver.Chrome(options=options)
 
@@ -21,10 +58,9 @@ else:
     last_page = 2
 
 # Инициализация таблицы
-df_header = pd.DataFrame(columns=["ID", "Заголовок", "Описание", "Дата", "Редактор", "Ссылка"])
+df_header = pd.DataFrame(columns=["Заголовок", "Описание", "Дата", "Редактор", "Ссылка"])
 df_header.to_csv("waste/news.csv", index=False, encoding='utf-8-sig')
 
-last_date = None # Здесь можно поставить дату от которой до текущего момента будут сохранены новости datetime(2025, 2, 26)
 for page in range(1, last_page):
     print(f"Собираем данные со страницы {page}...")
     browser.get(f"{BASE_URL}?page={page}")
@@ -32,7 +68,6 @@ for page in range(1, last_page):
     blocks = browser.find_element(By.CLASS_NAME, "feeds_holder")
     all_news = blocks.find_elements(By.CLASS_NAME, "block")
 
-    news_data = []
     for news in all_news:
         title_element = news.find_element(By.CLASS_NAME, "link")
         title = title_element.text if title_element else "Нет Заголовка"
@@ -50,9 +85,8 @@ for page in range(1, last_page):
             exit()
 
         if len(text) > 1:
-            news_data.append([title, text[1], date, author, link])
-
-    df = pd.DataFrame(news_data, columns=["Заголовок", "Описание", "Дата", "Редактор", "Ссылка"])
-    df.to_csv("waste/news.csv", index=True, mode='a', header=False, encoding='utf-8-sig')
+            df = pd.DataFrame([[title, text, date, author, link]],
+                              columns=["Заголовок", "Описание", "Дата", "Редактор", "Ссылка"])
+            df.to_csv("waste/news.csv", index=False, mode='a', header=False, encoding='utf-8-sig')
 
 browser.close()
