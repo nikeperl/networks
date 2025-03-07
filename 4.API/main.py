@@ -2,45 +2,51 @@ from flask import Flask, request, jsonify
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-import subprocess
+import parser
 
 
 app = Flask(__name__)
 
-# Подключение к БД
-DB_CONFIG = {
+# конфиг базы данных
+conn = {
     "dbname": "news_db",
-    "user": "user",
-    "password": "password",
-    "host": "db",
     "port": 5432
 }
 
+def save_to_db(news_list):
+    cursor = conn.cursor()
+
+    cursor.execute("TRUNCATE TABLE news RESTART IDENTITY;")
+
+    for data in news_list:
+        cursor.execute("""
+            INSERT INTO news (title, description, date, author, link) 
+            VALUES (%s, %s, %s, %s, %s)
+        """, (data["title"], data["description"], data["date"], data["author"], data["link"]))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
 @app.route("/parse", methods=["GET"])
 def parse():
-    """Запускает парсер с переданным URL"""
     url = request.args.get("url")
-    if not url:
-        return jsonify({"status": "error", "message": "URL не указан"}), 400
+    time_limit = request.args.get("time")
 
-    try:
-        result = subprocess.run(["python3", "parser.py", url], capture_output=True, text=True)
-        return jsonify({"status": "success", "output": result.stdout})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    result = parser.parse_website(url, time_limit)
+    save_to_db(result)
+    return jsonify(result)
 
 @app.route("/data", methods=["GET"])
 def get_data():
-    """Получает данные из БД и возвращает в JSON"""
-    try:
-        conn = psycopg2.connect(**DB_CONFIG)
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM news")
-        data = cursor.fetchall()
-        conn.close()
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    conn = psycopg2.connect(**conn)
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("SELECT * FROM news")
+    data = cursor.fetchall()
+    conn.close()
+    return jsonify(data)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    app.run()
+    # http://127.0.0.1:5000/parse?url=https://rozetked.me/news&time=01.03
+    # http://127.0.0.1:5000/date

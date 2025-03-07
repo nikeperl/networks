@@ -36,7 +36,8 @@ def parse_datetime(date_str: str) -> datetime:
         except ValueError:
             continue
 
-    raise ValueError(f"Неверный формат даты: {date_str}")
+    print("Дата не установлена")
+    return None
 
 
 last_date = parse_datetime(input(
@@ -84,9 +85,8 @@ for page in range(1, last_page):
             browser.close()
             exit()
 
-        if len(text) > 1:
-            df = pd.DataFrame([[title, text, date, author, link]],
-                              columns=["Заголовок", "Описание", "Дата", "Редактор", "Ссылка"])
-            df.to_csv("waste/news.csv", index=False, mode='a', header=False, encoding='utf-8-sig')
+        df = pd.DataFrame([[title, text, date, author, link]],
+                          columns=["Заголовок", "Описание", "Дата", "Редактор", "Ссылка"])
+        df.to_csv("waste/news.csv", index=False, mode='a', header=False, encoding='utf-8-sig')
 
 browser.close()

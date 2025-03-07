@@ -1,8 +1,7 @@
+from datetime import datetime
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-import psycopg2
-
-from datetime import datetime
 
 
 def parse_datetime(date_str: str) -> datetime:
@@ -38,26 +37,6 @@ def parse_datetime(date_str: str) -> datetime:
 
     return None
 
-def save_to_db(news_list):
-    """Сохраняет список новостей в PostgreSQL"""
-    conn = psycopg2.connect(
-        dbname="news_db",
-        user="user",
-        password="password",
-        host="db",
-        port=5432
-    )
-    cursor = conn.cursor()
-    for data in news_list:
-        cursor.execute("""
-            INSERT INTO news (title, description, date, author, link) 
-            VALUES (%s, %s, %s, %s, %s)
-        """, (data["title"], data["description"], data["date"], data["author"], data["link"]))
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-
 def parse_news(news):
     title_element = news.find_element(By.CLASS_NAME, "link")
     title = title_element.text if title_element else "Нет Заголовка"
@@ -81,7 +60,8 @@ def parse_news(news):
     }
 
 
-def parse_website(url, last_date=None):
+def parse_website(url, date_str=None):
+    last_date = parse_datetime(date_str)
     options = webdriver.ChromeOptions()
     # options.add_argument("--headless=new")
     options.add_argument("--blink-settings=imagesEnabled=false")
@@ -116,10 +96,3 @@ def parse_website(url, last_date=None):
     
     browser.close()
     return news_data
-
-if __name__ == "__main__":
-    url = "https://rozetked.me/news"
-    last_date = parse_datetime(input(
-        "Введите дату от которой собрать новости: "))  # Здесь можно поставить дату от которой до текущего момента будут сохранены новости datetime(2025, 2, 26)
-    parsed_data = parse_website(url, last_date)
-    print(parsed_data)
