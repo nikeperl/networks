@@ -8,10 +8,10 @@ import parser
 app = Flask(__name__)
 
 # конфиг базы данных
-conn = {
-    "dbname": "news_db",
-    "port": 5432
-}
+conn = psycopg2.connect(
+    dbname="news_db",
+    port="5432"
+)
 
 def save_to_db(news_list):
     cursor = conn.cursor()
@@ -39,7 +39,6 @@ def parse():
 
 @app.route("/data", methods=["GET"])
 def get_data():
-    conn = psycopg2.connect(**conn)
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute("SELECT * FROM news")
     data = cursor.fetchall()
@@ -48,5 +47,5 @@ def get_data():
 
 if __name__ == "__main__":
     app.run()
-    # http://127.0.0.1:5000/parse?url=https://rozetked.me/news&time=01.03
+    # http://127.0.0.1:5000/parse?url=https://rozetked.me/news&time=11.03
     # http://127.0.0.1:5000/date
